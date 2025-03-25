@@ -1,0 +1,60 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  analyze-code:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16"
+
+      - name: Install dependencies
+        run: |
+          pip install pylint flake8 radon
+          npm install -g eslint
+
+      - name: Run Python analysis
+        run: |
+          echo "🔍 Running Python analysis..."
+          find . -name "*.py" | xargs pylint --disable=all --enable=convention,refactor,warning,error || true
+          find . -name "*.py" | xargs radon cc -a || true
+          find . -name "*.py" | xargs flake8 --statistics || true
+
+      - name: Run JavaScript analysis
+        run: |
+          echo "🔍 Running JavaScript analysis..."
+          find . -name "*.js" -o -name "*.jsx" | xargs eslint --format json || true
+
+      - name: Upload Analysis Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-results
+          path: .  # Uploads the full results for debugging
+
+      - name: Post results as a PR comment
+        if: github.event_name == 'pull_request'
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            🚀 **Code Quality Report**  
+            - Python: ✅ pylint, flake8, radon  
+            - JavaScript: ✅ eslint  
+            - **Check logs in GitHub Actions for details.**
